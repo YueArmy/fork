@@ -1,0 +1,874 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<title>分岐プロトタイプ｜SNS → Kindle</title>
+<style>
+  :root{
+    --bg:#faf7f1; --card:#ffffff; --ink:#2b2620; --sub:#7a7264;
+    --sns:#8b98a8; --sns-bg:#eef1f5; --kindle:#e8833a; --kindle-bg:#fdf1e5;
+    --line:#e5ded2; --accent:#3f7d5a;
+  }
+  *{box-sizing:border-box; -webkit-tap-highlight-color:transparent;}
+  body{margin:0; font-family:"Hiragino Sans","Noto Sans JP",sans-serif; background:var(--bg); color:var(--ink);}
+  .wrap{max-width:480px; margin:0 auto; padding:20px 16px 48px;}
+  header{text-align:center; margin:8px 0 4px; position:relative;}
+  .info-btn{position:absolute; top:0; right:0; width:34px; height:34px; border-radius:50%; border:1.5px solid var(--line); background:#fff; font-family:Georgia,serif; font-style:italic; font-size:17px; color:var(--sub); cursor:pointer; line-height:1;}
+  header .kicker{font-size:12px; letter-spacing:.18em; color:var(--sub);}
+  header h1{font-size:22px; margin:6px 0 2px;}
+  header p{font-size:13px; color:var(--sub); margin:0 0 8px;}
+  .view{display:none;}
+  .view.active{display:block;}
+  .fork-cards{display:flex; flex-direction:column; gap:14px; margin-top:14px;}
+  .fork-card{border:2px solid var(--line); border-radius:18px; background:var(--card); padding:16px 16px 14px; text-align:left; width:100%; cursor:pointer; font-family:inherit;}
+  .fork-card:active{transform:scale(.99);}
+  .fork-card.sns{border-color:#cfd8e2; background:var(--sns-bg);}
+  .fork-card.kindle{border-color:#f3cf9f; background:var(--kindle-bg);}
+  .fork-card .art{display:flex; justify-content:center; padding:4px 0 8px;}
+  .fork-card h2{font-size:19px; margin:4px 0 2px;}
+  .fork-card p{font-size:13.5px; color:var(--sub); margin:0; line-height:1.6;}
+  .fork-card .ident{display:inline-block; font-size:12.5px; font-weight:700; padding:3px 10px; border-radius:999px; margin:2px 0 6px;}
+  .fork-card.sns .ident{background:#dde4ec; color:#5a6a7d;}
+  .fork-card.kindle .ident{background:#f7ddba; color:#9a5a1d;}
+  .bright{background:#eaf4ee; border:1.5px solid #bfdcc9; border-radius:14px; padding:16px; text-align:center; margin-top:10px;}
+  .bright .num{font-size:34px; font-weight:800; color:#265c3d; line-height:1.1;}
+  .bright .cap{font-size:13px; color:#265c3d; margin-top:2px;}
+  .counter-box{margin:14px auto 2px; max-width:340px;}
+  .counter-num{font-size:15px; font-weight:700;}
+  .counter-num span{font-size:24px; color:var(--kindle);}
+  .gauge{height:10px; background:#e8e0cf; border-radius:999px; overflow:hidden; margin:8px 0 6px;}
+  .gauge-fill{height:100%; background:linear-gradient(90deg,#e8a04a,#e8833a); width:0%; transition:width .4s;}
+  .counter-cap{font-size:11.5px; color:var(--sub); line-height:1.6;}
+  .stamps{display:flex; gap:6px; justify-content:center; margin:12px 0 4px; flex-wrap:wrap;}
+  .stamp{width:28px; height:28px; border-radius:50%; border:2px solid #cbbfa7; display:flex; align-items:center; justify-content:center; font-size:10.5px; color:#a08c5f; background:#fff;}
+  .stamp.on{background:var(--kindle); border-color:var(--kindle); color:#fff; font-weight:700;}
+  .dose-link{display:block; width:100%; margin-top:16px; padding:13px; background:none; border:1.5px dashed #b9ac93; border-radius:12px; font-size:14px; color:var(--ink); cursor:pointer; font-family:inherit;}
+  .learn-toggle{width:100%; background:#fff; border:1px solid var(--line); border-radius:12px; padding:10px 12px; font-size:13.5px; color:var(--sub); cursor:pointer; font-family:inherit; margin-top:12px; text-align:left;}
+  .row-btns{display:flex; gap:10px; margin-top:14px;}
+  .ghost{flex:1; padding:11px; border-radius:10px; border:1px solid var(--line); background:var(--card); font-size:13.5px; cursor:pointer; font-family:inherit; color:var(--ink);}
+  .primary{display:block; width:100%; padding:15px; border:none; border-radius:12px; background:var(--ink); color:#fff; font-size:16px; cursor:pointer; font-family:inherit; margin-top:14px;}
+  .primary.kindle{background:var(--kindle);}
+  .primary.sns{background:var(--sns);}
+  .note{font-size:12.5px; color:var(--sub); line-height:1.7; margin-top:10px;}
+  .msg{background:#eaf4ee; border:1px solid #bfdcc9; color:#265c3d; border-radius:10px; padding:10px 12px; font-size:13.5px; margin-top:12px; line-height:1.6;}
+  h3.sec{font-size:15px; margin:22px 0 8px;}
+  label.f{display:block; font-size:13px; color:var(--sub); margin:14px 0 6px;}
+  select,input[type=text]{width:100%; padding:12px; font-size:16px; border:1px solid var(--line); border-radius:10px; background:#fff; font-family:inherit; color:var(--ink);}
+  table.stats{width:100%; border-collapse:collapse; font-size:14px; margin-top:8px;}
+  table.stats td{padding:9px 6px; border-bottom:1px solid var(--line);}
+  table.stats td:last-child{text-align:right; font-weight:700;}
+  ul.log{list-style:none; padding:0; margin:8px 0; font-size:13px;}
+  ul.log li{padding:7px 2px; border-bottom:1px solid var(--line); color:var(--ink);}
+  ul.log li span{color:var(--sub); margin-right:8px;}
+  ol.guide{font-size:14px; line-height:1.9; padding-left:20px;}
+  .dose-head{display:flex; justify-content:space-between; align-items:baseline; margin-top:6px;}
+  .dose-head .timer{font-size:26px; font-weight:800; font-variant-numeric:tabular-nums;}
+  .dose-head .lines{font-size:13px; color:var(--sub);}
+  .board-wrap{display:flex; justify-content:center; margin-top:10px;}
+  canvas{background:#22201d; border-radius:10px; width:min(68vw,240px); height:auto;}
+  .pad{display:grid; grid-template-columns:repeat(4,1fr); gap:10px; margin-top:14px;}
+  .pad button{padding:16px 0; font-size:19px; border-radius:12px; border:1px solid var(--line); background:var(--card); cursor:pointer; font-family:inherit;}
+  .backlink{display:inline-block; margin-bottom:6px; font-size:13.5px; color:var(--accent); background:none; border:none; cursor:pointer; font-family:inherit; padding:4px 0;}
+  /* --- シミュレーション --- */
+  .phone{border:3px solid #33302b; border-radius:38px; background:#fff; max-width:350px; margin:10px auto 0; padding:14px 14px 20px; min-height:600px; box-shadow:0 10px 30px rgba(60,50,30,.14);}
+  .phone .notch{width:110px; height:20px; background:#33302b; border-radius:0 0 12px 12px; margin:-14px auto 12px;}
+  .sim-stage{display:none;}
+  .sim-stage.on{display:block;}
+  .sim-cap{max-width:350px; margin:12px auto 0; font-size:13.5px; line-height:1.75; color:var(--ink); background:#fff; border:1px solid var(--line); border-radius:12px; padding:11px 13px;}
+  .sim-cap b{color:var(--kindle);}
+  .store-app{display:flex; gap:12px; align-items:center; padding:14px 4px;}
+  .store-icon{width:58px; height:58px; border-radius:14px; background:linear-gradient(135deg,#fdf1e5,#f7ddba); border:1.5px solid #e8c9a8; display:flex; align-items:center; justify-content:center; font-size:25px; flex:none;}
+  .store-app .nm{font-weight:700; font-size:16px;}
+  .store-app .ds{font-size:12px; color:var(--sub); margin-top:2px; line-height:1.5;}
+  .get-btn{margin-left:auto; background:#eef1f5; color:#2f6fd0; border:none; font-weight:700; border-radius:999px; padding:8px 18px; font-size:14px; cursor:pointer; font-family:inherit; flex:none;}
+  .home-grid{display:grid; grid-template-columns:repeat(4,1fr); gap:16px 10px; padding:16px 4px;}
+  .appicon{text-align:center; font-size:11px; color:var(--ink); background:none; border:none; cursor:pointer; font-family:inherit; padding:0;}
+  .appicon .ic{width:52px; height:52px; border-radius:13px; margin:0 auto 4px; display:flex; align-items:center; justify-content:center; font-size:22px; color:#fff;}
+  .preset{border:1px solid var(--line); border-radius:12px; padding:12px 13px; margin-top:10px; font-size:14px;}
+  .preset .k{font-size:11.5px; color:var(--sub); margin-bottom:2px;}
+  .preset .v{font-weight:700;}
+  .fake-post{border-bottom:1px solid #ececec; padding:11px 2px; display:flex; gap:9px;}
+  .fake-post .av{width:34px; height:34px; border-radius:50%; background:#dfe5ec; flex:none;}
+  .fake-post .ln{height:8px; border-radius:4px; background:#e8ecf1; margin-bottom:6px;}
+  .kindle-page{padding:8px 6px; font-size:13.5px; line-height:2.05; color:#3a352d;}
+  .kindle-page .ch{font-size:12px; color:var(--sub); letter-spacing:.1em; margin-bottom:8px;}
+  .big-count{text-align:center; padding:16px 0 4px;}
+  .big-count .n{font-size:40px; font-weight:800; color:var(--kindle); line-height:1;}
+  .big-count .t{font-size:13px; color:var(--sub); margin-top:5px;}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <button class="info-btn" id="btn-info" aria-label="このアプリについて">i</button>
+    <h1>どっちの30分にする？</h1>
+    <div class="counter-box">
+      <div class="counter-num">前進カウント <span id="hd-count">0</span> 回</div>
+      <div class="gauge"><div class="gauge-fill" id="hd-gauge"></div></div>
+    </div>
+  </header>
+
+  <!-- 分岐画面 -->
+  <section id="view-fork" class="view active">
+    <div id="dose-done-msg" class="msg" style="display:none;">服用おわり。衝動の様子はどう？ もう一度、どっちに進むか選んでみて。</div>
+    <div class="fork-cards">
+      <button class="fork-card sns" id="btn-sns">
+        <div class="art">
+          <svg width="150" height="110" viewBox="0 0 150 110" aria-hidden="true">
+            <rect x="52" y="6" width="46" height="86" rx="9" fill="#fff" stroke="#8b98a8" stroke-width="2.5"/>
+            <rect x="60" y="18" width="30" height="7" rx="3.5" fill="#ccd6e0"/>
+            <rect x="60" y="31" width="30" height="7" rx="3.5" fill="#dde4ec"/>
+            <rect x="60" y="44" width="30" height="7" rx="3.5" fill="#ccd6e0"/>
+            <rect x="60" y="57" width="22" height="7" rx="3.5" fill="#dde4ec"/>
+            <path d="M112 26 v34 M106 52 l6 9 6-9" fill="none" stroke="#8b98a8" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>
+            <path d="M38 84 V50 M32 58 l6-9 6 9" fill="none" stroke="#b3bfcc" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>
+            <circle cx="120" cy="88" r="13" fill="#fff" stroke="#8b98a8" stroke-width="2.5"/>
+            <path d="M120 80 v8 l6 4" fill="none" stroke="#8b98a8" stroke-width="2.5" stroke-linecap="round"/>
+          </svg>
+        </div>
+        <h2>いつものスクロール</h2>
+        <div class="ident">気づいたら時間が過ぎている人</div>
+        <p>30分溶けて、目が疲れて、やるはずだったことが残ってる自分。</p>
+      </button>
+
+      <button class="fork-card kindle" id="btn-kindle">
+        <div class="art">
+          <svg width="150" height="110" viewBox="0 0 150 110" aria-hidden="true">
+            <path d="M75 22 C64 12 46 10 32 13 V92 C46 89 64 91 75 100 C86 91 104 89 118 92 V13 C104 10 86 12 75 22 Z" fill="#fff" stroke="#e8833a" stroke-width="2.5" stroke-linejoin="round"/>
+            <path d="M75 22 V100" stroke="#e8833a" stroke-width="2"/>
+            <rect x="63" y="12" width="9" height="26" fill="#c9403b"/>
+            <text id="cover-title" x="45" y="52" font-size="9.5" fill="#7a7264" text-anchor="middle">読んでいる本</text>
+            <text id="cover-title2" x="45" y="66" font-size="9.5" fill="#7a7264" text-anchor="middle"></text>
+            <path d="M88 44 h20 M88 56 h20 M88 68 h14" stroke="#e8c9a8" stroke-width="3" stroke-linecap="round"/>
+          </svg>
+        </div>
+        <h2>続きを読む</h2>
+        <div class="ident" id="kindle-ident">読みたい本を読み進める人</div>
+        <p id="kindle-caption">読みかけの本を、5分だけ。1ページでも勝ち。</p>
+        <p id="kindle-purpose" style="display:none; margin-top:5px; color:#9a5a1d; font-weight:700;"></p>
+      </button>
+    </div>
+
+    <button class="learn-toggle" id="fork-learn-toggle">これまでの学び（<span id="fork-learn-count">0</span>件）<span id="fork-learn-chev" style="float:right;">▾</span></button>
+    <div id="fork-learn" style="display:none;">
+      <ul class="log" id="fork-learn-list" style="margin-top:8px;"></ul>
+    </div>
+
+    <button class="dose-link" id="btn-dose">衝動が強くて分岐だけじゃ落ちなさそうなとき<br>→ 服用する（視空間タスク 3分）</button>
+
+    <div class="row-btns">
+      <button class="ghost" id="btn-to-stats">記録を見る</button>
+      <button class="ghost" id="btn-to-settings">設定</button>
+    </div>
+  </section>
+
+  <!-- 遷移画面 -->
+  <section id="view-result" class="view">
+    <h3 class="sec" id="result-title"></h3>
+    <p class="note" id="result-note"></p>
+    <button class="primary" id="result-open"></button>
+    <button class="ghost" id="result-web" style="width:100%; margin-top:10px;"></button>
+    <div id="result-learn-box" style="display:none; margin-top:18px; border-top:1px solid var(--line); padding-top:6px;">
+      <h3 class="sec">学びの蓄積</h3>
+      <p class="note" id="learn-last" style="margin-top:0;"></p>
+      <label class="f">今回拾ったことを1行で（読み終わったら）</label>
+      <input type="text" id="learn-input" placeholder="例：協力は共通の物語で生まれる">
+      <button class="primary" id="learn-save" style="background:var(--accent);">記録する</button>
+      <p class="msg" id="learn-saved" style="display:none;">記録した。次に開いたとき、前回の学びとしてここに出る。</p>
+    </div>
+    <button class="ghost" id="result-back" style="width:100%; margin-top:10px;">分岐に戻る</button>
+  </section>
+
+  <!-- パス中 -->
+  <section id="view-pass" class="view">
+    <h1>素通り中</h1>
+    <p class="sub">さっきSNS側を選んだので、30分は分岐を出さない。そのままSNSへ戻す。</p>
+    <button class="primary sns" id="pass-open">SNSを開く</button>
+    <button class="ghost" id="pass-fork" style="width:100%; margin-top:10px;">やっぱり分岐を表示する</button>
+  </section>
+
+  <!-- 服用モード -->
+  <section id="view-dose" class="view">
+    <button class="backlink" id="dose-quit">← やめて分岐に戻る</button>
+    <div class="dose-head">
+      <div class="timer" id="dose-timer">3:00</div>
+      <div class="lines">消した列：<span id="dose-lines">0</span> ／ 形と場所だけ見てて</div>
+    </div>
+    <div class="board-wrap"><canvas id="board" width="180" height="360"></canvas></div>
+    <button class="primary" id="dose-start">服用をはじめる</button>
+    <div class="pad" id="dose-pad" style="display:none;">
+      <button id="pad-left">←</button>
+      <button id="pad-rotate">↻</button>
+      <button id="pad-right">→</button>
+      <button id="pad-down">↓</button>
+    </div>
+    <p class="note">落ちてくる形を見て、回して、置く場所を決める。それ以外は考えなくていい。難易度は30秒ごとに少し上がる（用量の自動調整）。</p>
+  </section>
+
+  <!-- 記録 -->
+  <section id="view-stats" class="view">
+    <button class="backlink" data-back>← 分岐に戻る</button>
+    <h3 class="sec">ブライトスポット（この端末の中だけ）</h3>
+    <div class="bright">
+      <div class="num"><span id="st-bright">0</span>回</div>
+      <div class="cap">前進のカウント</div>
+    </div>
+    <p class="note" id="st-breakdown" style="text-align:center;"></p>
+    <table class="stats">
+      <tr><td>分岐が出た回数</td><td id="st-total">0</td></tr>
+      <tr><td>Kindle側が選ばれた</td><td id="st-kindle">0</td></tr>
+      <tr><td>SNS側が選ばれた</td><td id="st-sns">0</td></tr>
+      <tr><td>服用した回数</td><td id="st-dose">0</td></tr>
+    </table>
+    <h3 class="sec">最近の記録</h3>
+    <ul class="log" id="log-list"></ul>
+    <button class="ghost" id="btn-to-learn" style="width:100%; margin-bottom:10px;">学びの記録を見る</button>
+    <button class="ghost" id="stats-reset" style="width:100%;">記録を消す</button>
+  </section>
+
+  <!-- 学びの蓄積 -->
+  <section id="view-learn" class="view">
+    <button class="backlink" data-back>← 分岐に戻る</button>
+    <h3 class="sec">学びの蓄積</h3>
+    <p class="note" style="margin-top:0;">拾ったことが残っていると、次に開いたときに文脈が戻りやすく、続けやすくなる。そのための置き場。</p>
+    <ul class="log" id="learn-list"></ul>
+  </section>
+
+  <!-- 設定 -->
+  <section id="view-settings" class="view">
+    <button class="backlink" data-back>← 分岐に戻る</button>
+    <h3 class="sec">設定</h3>
+    <label class="f">トリガーにするSNS（試作では表示と遷移先に使う）</label>
+    <select id="set-sns">
+      <option value="x">X</option>
+      <option value="instagram">Instagram</option>
+      <option value="youtube">YouTube</option>
+    </select>
+    <label class="f">今読んでいる本のタイトル（表紙と誘導文に出る）</label>
+    <input type="text" id="set-book" placeholder="例：サピエンス全史">
+    <label class="f">読む目的・この本で得たいこと（分岐と読書の画面に出る。漠然と読むと飽きるので）</label>
+    <input type="text" id="set-purpose" placeholder="例：協力の仕組みを知って、仕事に使える考え方を拾う">
+    <label class="f">「〜な人」の言葉（分岐のKindle側に出る。アイデンティティの方から書く）</label>
+    <input type="text" id="set-identity" placeholder="例：読みたい本を読み進める人">
+    <label class="f">Kindleを読む時間（具体的に小さく。自分で決める）</label>
+    <select id="set-readmin">
+      <option value="1">1分だけ</option>
+      <option value="5">5分だけ</option>
+      <option value="10">10分だけ</option>
+    </select>
+    <label class="f">服用の長さ</label>
+    <select id="set-dose">
+      <option value="3">3分（標準）</option>
+      <option value="5">5分（強め）</option>
+    </select>
+    <button class="primary" id="settings-save">保存する</button>
+    <p class="note">本の表紙そのものは取得できないので、試作ではタイトル文字で代用してる。実際の素材の当て方は実機で試してから決める。読む時間をAIが推薦する形もあり得るが、試作では未実装（まず自分で決める形で確かめる）。</p>
+  </section>
+
+  <!-- 情報（開発者向け・解説） -->
+  <section id="view-info" class="view">
+    <button class="backlink" data-back>← 分岐に戻る</button>
+    <button class="primary" id="btn-to-sim">動作シミュレーション（ダウンロードからの一連の流れ）</button>
+    <h3 class="sec">このアプリの仕組み（解説）</h3>
+    <p class="note">SNSを開いた瞬間に割り込み、2つの未来のイラストで分岐を出す。考え方は「一瞬の衝動への鎮痛剤（頓服）」：長期的な矯正ではなく、その回の衝動をやり過ごす。分岐の絵は『スイッチ！』の「目的地の絵はがき」と、未来の場面を具体的に思い浮かべると衝動的な選択が弱まるという研究（エピソード未来思考）が土台。選択肢の言葉は「習慣を身につける」ためでなく、「どんな人でいるか」（アイデンティティ）で書く。</p>
+    <h3 class="sec">前進カウントと数字の目安（解説）</h3>
+    <p class="note">カウントは0から始まらない。アプリを入れた時点で+1、設定を完了した時点で+1（合計2）。これはスタンプカードの研究（最初から2つ押してあるカードは完遂率が高い＝授与進捗効果）に基づく。ゲージの目安（18回・66回・254回）は、習慣が自動化するまでの期間を測った研究（Lally ら, 2010：中央値66日、幅18〜254日）の数字を回数に読み替えたもので、卒業ラインではない。表示は「残り」ではなく「溜まった分」を見る形にしてある。</p>
+    <h3 class="sec">実機への置き方（iPhone / ショートカット）</h3>
+    <ol class="guide">
+      <li>このページを Safari で開き、共有ボタンから「ホーム画面に追加」する。</li>
+      <li>ショートカット App → オートメーション → ＋ → 「App」を選ぶ。</li>
+      <li>対象のSNS（Xなど）を選び、「開かれている」をチェック、「すぐに実行」を選ぶ。</li>
+      <li>アクションに「URLを開く」を追加し、このページのURLの末尾に <b>?auto=1</b> を付けて指定する（パス状態の判定に使う）。</li>
+      <li>SNSを開くたびに分岐画面が先に出るようになる。効きすぎ／弱すぎを感じたら、設定で服用の長さを変える。</li>
+    </ol>
+    <p class="note">注意：オートメーションの挙動はiOSのバージョンで変わる。まず1つのアプリだけで試して、ループ（開く→分岐→開く…）にならないか確認すること。分岐でSNS側を選んだあとは、このページを経由せず直接開くのでループにはならない想定。</p>
+    <p class="note">分岐の言葉の作り方：目標は「新しい習慣を身につける」じゃなく、「どんな人でいるか」で書く（設定で変更できる）。1回の選択は小さくても、いい方向に進めた回数はブライトスポットとして貯まっていく、という考え方（『スイッチ！』）。</p>
+    <h3 class="sec">実現方式の正直な限界（調査済み）</h3>
+    <ol class="guide">
+      <li>ショートカット方式：割り込みは「起動の前」ではなく「起動の直後」。Xの画面が約1秒チラッと見えてから、この画面に切り替わる。フルのUIは出せるが、完全な先回りはできない。</li>
+      <li>ループ問題：分岐でSNS側を選んでXを開くと、オートメーションが再び発火して分岐に戻される。これを避けるには「さっき分岐を通った」という合図（バイパス）が必要で、one sec は自アプリの中でそれを管理している。Webページ単体では持ちにくいので、製品化するならネイティブアプリ＋オートメーションが本命の形。</li>
+      <li>Screen Time APIの遮断画面：起動前に止められる唯一の方式だが、出せるのはシステムの遮断画面（文言＋ボタン最大2つ）だけ。イラスト2択もタスクも出せないし、Kindleを開くこともできない。</li>
+      <li>Android：アプリ起動の検知＋全画面オーバーレイが許可制で使えるので、この設計のまま（起動とほぼ同時にフルUI）実現できる。</li>
+    </ol>
+  </section>
+
+  <!-- シミュレーション -->
+  <section id="view-sim" class="view">
+    <button class="backlink" data-back>← 分岐に戻る</button>
+    <div class="phone">
+      <div class="notch"></div>
+
+      <div class="sim-stage on" id="sim-store">
+        <div style="font-weight:800; font-size:17px; padding:2px 2px 0;">App Store</div>
+        <div class="store-app">
+          <div class="store-icon">⏱️</div>
+          <div>
+            <div class="nm">ブンキ（仮）</div>
+            <div class="ds">SNSを開く前に、行き先を選ぶ</div>
+          </div>
+          <button class="get-btn" id="sim-get">入手</button>
+        </div>
+        <div style="border-top:1px solid #eee; margin-top:8px; padding-top:12px; font-size:12.5px; color:var(--sub); line-height:1.7;">評価・レビュー・説明文などのストア情報は、シミュレーションでは省略。</div>
+      </div>
+
+      <div class="sim-stage" id="sim-welcome">
+        <div class="big-count"><div class="n">1<span style="font-size:18px;">回</span></div><div class="t">前進カウント（アプリを入れた +1）</div></div>
+        <p style="font-size:14px; line-height:1.9; padding:0 4px;">ようこそ。最初に、割り込むアプリと、代わりに開く行き先を設定します。</p>
+        <button class="primary" id="sim-welcome-next">はじめる</button>
+      </div>
+
+      <div class="sim-stage" id="sim-setup">
+        <div style="font-weight:800; font-size:16px;">初期設定</div>
+        <div class="preset"><div class="k">割り込むアプリ（トリガー）</div><div class="v">X</div></div>
+        <div class="preset"><div class="k">代わりに開く行き先</div><div class="v">Kindle</div></div>
+        <div class="preset"><div class="k">今読んでいる本</div><div class="v">サピエンス全史</div></div>
+        <div class="preset"><div class="k">読む目的・得たいこと</div><div class="v">協力の仕組みを知って、仕事に使える考え方を拾う</div></div>
+        <div class="preset"><div class="k">「〜な人」の言葉</div><div class="v">読みたい本を読み進める人</div></div>
+        <div class="preset"><div class="k">読む時間</div><div class="v">5分だけ</div></div>
+        <div class="preset"><div class="k">衝動が強いときの服用</div><div class="v">視空間タスク 3分</div></div>
+        <button class="primary" id="sim-setup-btn">この内容で設定する</button>
+        <p class="note">シミュレーションでは入力済みの状態にしてある。実際はここを自分で選ぶ／書く。</p>
+      </div>
+
+      <div class="sim-stage" id="sim-ready">
+        <div class="big-count"><div class="n">2<span style="font-size:18px;">回</span></div><div class="t">前進カウント（設定した +1）</div></div>
+        <p style="font-size:14px; line-height:1.9; padding:0 4px;">設定が終わった。この時点で、もう2回ぶん進んでいる。あとは普段どおりスマホを使うだけ。</p>
+        <button class="primary" id="sim-ready-btn">ホーム画面に進む</button>
+      </div>
+
+      <div class="sim-stage" id="sim-home">
+        <div class="home-grid">
+          <button class="appicon" id="sim-icon-x"><span class="ic" style="background:#111;">𝕏</span>X</button>
+          <button class="appicon"><span class="ic" style="background:#3f7d5a;">✉</span>メール</button>
+          <button class="appicon"><span class="ic" style="background:#e8833a;">K</span>Kindle</button>
+          <button class="appicon"><span class="ic" style="background:#8b98a8;">◷</span>時計</button>
+          <button class="appicon"><span class="ic" style="background:#b9ac93;">▦</span>写真</button>
+          <button class="appicon"><span class="ic" style="background:#5b84d6;">☁</span>天気</button>
+          <button class="appicon"><span class="ic" style="background:#a06fc9;">♪</span>音楽</button>
+          <button class="appicon"><span class="ic" style="background:#6b6b6b;">⚙</span>設定</button>
+        </div>
+        <p class="note" style="text-align:center;">いつもの癖で、なんとなくXを開く場面。</p>
+      </div>
+
+      <div class="sim-stage" id="sim-xflash">
+        <div style="font-weight:800; font-size:15px; padding-bottom:4px;">X（開いた直後）</div>
+        <div class="fake-post"><div class="av"></div><div style="flex:1;"><div class="ln" style="width:55%;"></div><div class="ln" style="width:92%;"></div><div class="ln" style="width:78%;"></div></div></div>
+        <div class="fake-post"><div class="av"></div><div style="flex:1;"><div class="ln" style="width:48%;"></div><div class="ln" style="width:88%;"></div><div class="ln" style="width:64%;"></div></div></div>
+        <p class="note" style="text-align:center;">…約1秒だけ見えて、割り込みに切り替わる。</p>
+      </div>
+
+      <div class="sim-stage" id="sim-fork">
+        <div style="text-align:center; font-weight:800; font-size:18px; margin-top:2px;">どっちの30分にする？</div>
+        <div style="text-align:center; margin-top:8px; font-size:14px; font-weight:700;">前進カウント <span style="font-size:21px; color:var(--kindle);">2</span> 回</div>
+        <div class="gauge" style="max-width:280px; margin:8px auto 4px;"><div class="gauge-fill" style="width:11%;"></div></div>
+        <div class="fork-cards" style="margin-top:12px;">
+          <button class="fork-card sns" id="sim-btn-sns">
+            <h2 style="font-size:17px;">いつものスクロール</h2>
+            <div class="ident">気づいたら時間が過ぎている人</div>
+            <p>30分溶けて、目が疲れて、やるはずだったことが残ってる自分。</p>
+          </button>
+          <button class="fork-card kindle" id="sim-btn-kindle">
+            <h2 style="font-size:17px;">続きを読む</h2>
+            <div class="ident">読みたい本を読み進める人</div>
+            <p>「サピエンス全史」を5分だけ読む。1ページでも勝ち。</p>
+            <p style="margin-top:5px; color:#9a5a1d; font-weight:700;">狙い：協力の仕組みを知って、仕事に使える考え方を拾う</p>
+          </button>
+        </div>
+        <button class="learn-toggle" id="sim-learn-toggle">これまでの学び（2件）<span style="float:right;">▾</span></button>
+        <div id="sim-fork-learn" style="display:none;">
+          <ul class="log" style="margin-top:8px;">
+            <li><span>11/6</span>協力は「共通の物語」があるところに生まれる（サピエンス全史）</li>
+            <li><span>11/5</span>農業革命は豊かさではなく「贅沢の罠」だった（サピエンス全史）</li>
+          </ul>
+        </div>
+        <button class="dose-link" id="sim-btn-dose">衝動が強いとき → 服用する（視空間タスク 3分）</button>
+      </div>
+
+      <div class="sim-stage" id="sim-xfeed">
+        <div style="font-weight:800; font-size:15px; padding-bottom:4px;">X</div>
+        <div class="fake-post"><div class="av"></div><div style="flex:1;"><div class="ln" style="width:52%;"></div><div class="ln" style="width:94%;"></div><div class="ln" style="width:80%;"></div></div></div>
+        <div class="fake-post"><div class="av"></div><div style="flex:1;"><div class="ln" style="width:44%;"></div><div class="ln" style="width:86%;"></div><div class="ln" style="width:70%;"></div></div></div>
+        <div class="fake-post"><div class="av"></div><div style="flex:1;"><div class="ln" style="width:58%;"></div><div class="ln" style="width:90%;"></div><div class="ln" style="width:62%;"></div></div></div>
+        <div class="fake-post"><div class="av"></div><div style="flex:1;"><div class="ln" style="width:50%;"></div><div class="ln" style="width:84%;"></div><div class="ln" style="width:76%;"></div></div></div>
+        <button class="primary sns" id="sim-xfeed-back" style="background:var(--sns);">シミュレーションに戻る（分岐をもう一度）</button>
+      </div>
+
+      <div class="sim-stage" id="sim-dose">
+        <div style="text-align:center; font-weight:800; font-size:16px;">服用中（視空間タスク）</div>
+        <p class="note" style="text-align:center;">落ちてくる形を見て、回して、置く。3分間、頭の作業場を占有する。</p>
+        <div style="display:flex; justify-content:center; margin:10px 0;"><div style="width:120px; height:200px; background:#22201d; border-radius:8px; position:relative;">
+          <div style="position:absolute; left:30px; top:14px; width:56px; height:14px; background:#a06fc9; border-radius:3px;"></div>
+          <div style="position:absolute; left:44px; top:28px; width:28px; height:14px; background:#a06fc9; border-radius:3px;"></div>
+          <div style="position:absolute; left:16px; bottom:0; width:88px; height:14px; background:#5fae6e; border-radius:3px;"></div>
+          <div style="position:absolute; left:16px; bottom:14px; width:60px; height:14px; background:#e8c84a; border-radius:3px;"></div>
+        </div></div>
+        <button class="primary" id="sim-dose-btn">3分経過したことにする</button>
+      </div>
+
+      <div class="sim-stage" id="sim-kindle">
+        <p class="note" style="margin-top:0; font-weight:700; color:#9a5a1d;">狙い：協力の仕組みを知って、仕事に使える考え方を拾う</p>
+        <div class="kindle-page">
+          <div class="ch">サピエンス全史 ― 第3章</div>
+          <p>（ここに本の本文が表示される。シミュレーションでは本文は省略）</p>
+          <p>5分だけ、と決めて開いた本。タイマーも強制終了もない。読み終わるかどうかは自分で決める。</p>
+        </div>
+        <div class="gauge" style="margin-top:14px;"><div class="gauge-fill" style="width:34%; background:#3f7d5a;"></div></div>
+        <p class="note" style="text-align:center;">本の進み具合 34%</p>
+        <button class="primary kindle" id="sim-kindle-btn">5分読んだ</button>
+      </div>
+
+      <div class="sim-stage" id="sim-learn">
+        <div style="font-weight:800; font-size:16px;">学びを1行だけ</div>
+        <p class="note">読みっぱなしにしない。拾ったことを1行残すと、次に開いたときの「前回の続き」になる。</p>
+        <div class="preset"><div class="k">今回拾ったこと（入力済みの例）</div><div class="v">協力は「共通の物語」があるところに生まれる</div></div>
+        <button class="primary" id="sim-learn-btn" style="background:var(--accent);">記録する</button>
+      </div>
+
+      <div class="sim-stage" id="sim-done">
+        <div class="big-count"><div class="n">3<span style="font-size:18px;">回</span></div><div class="t">前進カウント（いい方向に進めた +1）</div></div>
+        <p style="font-size:14px; line-height:1.9; padding:0 4px;">今回の流れはここまで。衝動は「来た」けど、行き先が変わって、カウントが1つ増えた。学びも1件貯まった。この繰り返し。</p>
+        <button class="primary" id="sim-restart">最初からもう一度</button>
+        <button class="ghost" id="sim-exit" style="width:100%; margin-top:10px;">本物の画面に戻る</button>
+      </div>
+
+    </div>
+    <div class="sim-cap" id="sim-cap"></div>
+  </section>
+</div>
+
+<script>
+(function(){
+  "use strict";
+  var $ = function(id){ return document.getElementById(id); };
+  var LS_SET = "skf_settings", LS_LOG = "skf_events";
+
+  var SNS = {
+    x:         { name:"X",         app:"twitter://",        web:"https://x.com" },
+    instagram: { name:"Instagram", app:"instagram://app",   web:"https://www.instagram.com" },
+    youtube:   { name:"YouTube",   app:"youtube://",        web:"https://www.youtube.com" }
+  };
+
+  function loadSettings(){
+    var d = { sns:"x", book:"", dose:3, identity:"", readMin:5, purpose:"" };
+    try{ var s = JSON.parse(localStorage.getItem(LS_SET)); if(s){ for(var k in d){ if(s[k]!==undefined) d[k]=s[k]; } } }catch(e){}
+    return d;
+  }
+  function saveSettings(s){ try{ localStorage.setItem(LS_SET, JSON.stringify(s)); }catch(e){} }
+  function loadLog(){ try{ return JSON.parse(localStorage.getItem(LS_LOG)) || []; }catch(e){ return []; } }
+  function pushLog(type){
+    var log = loadLog(); log.push({ t: Date.now(), type: type });
+    if(log.length > 200) log = log.slice(log.length - 200);
+    try{ localStorage.setItem(LS_LOG, JSON.stringify(log)); }catch(e){}
+  }
+
+  var settings = loadSettings();
+  var pendingDest = null;
+
+  var LS_LEARN = "skf_learnings";
+  function loadLearnings(){ try{ return JSON.parse(localStorage.getItem(LS_LEARN)) || []; }catch(e){ return []; } }
+  function saveLearnings(a){ try{ localStorage.setItem(LS_LEARN, JSON.stringify(a)); }catch(e){} }
+  var LS_PASS = "skf_pass_until";
+  function passActive(){ try{ return Date.now() < (parseInt(localStorage.getItem(LS_PASS), 10) || 0); }catch(e){ return false; } }
+  function setPass(){ try{ localStorage.setItem(LS_PASS, String(Date.now() + 30 * 60000)); }catch(e){} }
+  function lastLearningText(){
+    var a = loadLearnings();
+    if(!a.length) return "前回の学びはまだない。今回が1件目になる。";
+    var last = a[a.length - 1];
+    return "前回拾ったこと：" + last.memo + (last.book ? "（" + last.book + "）" : "");
+  }
+  function renderLearn(){
+    var a = loadLearnings(), ul = $("learn-list");
+    ul.innerHTML = "";
+    if(!a.length){ ul.innerHTML = "<li>まだ学びの記録がない</li>"; return; }
+    var tail = a.slice().reverse();
+    for(var i=0;i<tail.length;i++){
+      var li = document.createElement("li");
+      var sp = document.createElement("span");
+      sp.textContent = fmtDate(tail[i].t);
+      li.appendChild(sp);
+      li.appendChild(document.createTextNode(tail[i].memo + (tail[i].book ? "（" + tail[i].book + "）" : "")));
+      ul.appendChild(li);
+    }
+  }
+
+  function show(view){
+    var views = document.querySelectorAll(".view");
+    for(var i=0;i<views.length;i++) views[i].classList.remove("active");
+    $("view-"+view).classList.add("active");
+    if(view === "fork") renderForkLearn();
+    window.scrollTo(0,0);
+  }
+
+  function renderForkLearn(){
+    var a = loadLearnings();
+    $("fork-learn-count").textContent = a.length;
+    var ul = $("fork-learn-list");
+    ul.innerHTML = "";
+    if(!a.length){
+      ul.innerHTML = "<li>まだ学びの記録がない。Kindle側を選んで読むと、ここに貯まっていく</li>";
+      return;
+    }
+    var tail = a.slice(-5).reverse();
+    for(var i=0;i<tail.length;i++){
+      var li = document.createElement("li");
+      var sp = document.createElement("span");
+      sp.textContent = fmtDate(tail[i].t);
+      li.appendChild(sp);
+      li.appendChild(document.createTextNode(tail[i].memo + (tail[i].book ? "（" + tail[i].book + "）" : "")));
+      ul.appendChild(li);
+    }
+  }
+
+  function applySettings(){
+    var title = settings.book && settings.book.trim() ? settings.book.trim() : "読んでいる本";
+    var a = title.slice(0,7), b = title.slice(7,14);
+    $("cover-title").textContent = a; $("cover-title2").textContent = b;
+    var ident = settings.identity && settings.identity.trim() ? settings.identity.trim() : "読みたい本を読み進める人";
+    $("kindle-ident").textContent = ident;
+    $("kindle-caption").textContent = "「" + title + "」を" + (settings.readMin || 5) + "分だけ読む。1ページでも勝ち。";
+    $("set-sns").value = settings.sns; $("set-book").value = settings.book || "";
+    $("set-identity").value = settings.identity || "";
+    $("set-purpose").value = settings.purpose || "";
+    var kp = $("kindle-purpose");
+    if(settings.purpose && settings.purpose.trim()){
+      kp.textContent = "狙い：" + settings.purpose.trim();
+      kp.style.display = "block";
+    }else{ kp.style.display = "none"; }
+    $("set-readmin").value = String(settings.readMin || 5);
+    $("set-dose").value = String(settings.dose);
+  }
+
+  function fmtTime(sec){ var m = Math.floor(sec/60), s = sec%60; return m + ":" + (s<10?"0":"") + s; }
+  function fmtDate(ts){ var d = new Date(ts); return (d.getMonth()+1) + "/" + d.getDate() + " " + ("0"+d.getHours()).slice(-2) + ":" + ("0"+d.getMinutes()).slice(-2); }
+
+  /* ---------- 分岐の選択 ---------- */
+  function choose(dest){
+    pushLog(dest);
+    updateStampUI();
+    pendingDest = dest;
+    var lb = $("result-learn-box");
+    if(dest === "kindle"){
+      lb.style.display = "block";
+      $("learn-last").textContent = lastLearningText();
+      $("learn-saved").style.display = "none";
+    }else{
+      lb.style.display = "none";
+    }
+    var sns = SNS[settings.sns];
+    if(dest === "kindle"){
+      $("result-title").textContent = "Kindleへ進む";
+      $("result-note").textContent = "この回のセッションは回避、で記録した。Kindleが開いたら、そのまま続きを読んでて。";
+      var b = $("result-open"); b.textContent = "Kindleを開く"; b.className = "primary kindle";
+      var w = $("result-web"); w.textContent = "Kindle（Web版・クラウドリーダー）を開く"; w.style.display = "block";
+    }else{
+      $("result-title").textContent = sns.name + "へ進む";
+      $("result-note").textContent = "そのまま通す。罰なし。選んだ事実だけ記録した。これから30分は分岐を出さず素通りする（ループ防止のパス状態）。";
+      var b2 = $("result-open"); b2.textContent = sns.name + "アプリを開く"; b2.className = "primary sns";
+      var w2 = $("result-web"); w2.textContent = sns.name + "（Web）を開く"; w2.style.display = "block";
+    }
+    show("result");
+    if(dest === "kindle"){
+      setTimeout(function(){ try{ window.location.href = "kindle://"; }catch(e){} }, 600);
+    }
+  }
+  $("btn-kindle").addEventListener("click", function(){ choose("kindle"); });
+  $("btn-sns").addEventListener("click", function(){ choose("sns"); });
+
+  $("result-open").addEventListener("click", function(){
+    if(pendingDest === "kindle"){ window.location.href = "kindle://"; }
+    else{ setPass(); window.location.href = SNS[settings.sns].app; }
+  });
+  $("result-web").addEventListener("click", function(){
+    if(pendingDest === "kindle"){ window.open("https://read.amazon.co.jp/", "_blank"); }
+    else{ setPass(); window.open(SNS[settings.sns].web, "_blank"); }
+  });
+  $("result-back").addEventListener("click", function(){ show("fork"); });
+  $("learn-save").addEventListener("click", function(){
+    var v = $("learn-input").value.trim();
+    if(!v) return;
+    var a = loadLearnings();
+    a.push({ t: Date.now(), book: settings.book || "", memo: v });
+    saveLearnings(a);
+    $("learn-input").value = "";
+    $("learn-saved").style.display = "block";
+    $("learn-last").textContent = lastLearningText();
+  });
+  $("btn-to-learn").addEventListener("click", function(){ renderLearn(); show("learn"); });
+  $("fork-learn-toggle").addEventListener("click", function(){
+    var box = $("fork-learn");
+    var open = box.style.display !== "none";
+    box.style.display = open ? "none" : "block";
+    $("fork-learn-chev").textContent = open ? "▾" : "▴";
+  });
+
+  /* ---------- 画面遷移 ---------- */
+  $("btn-to-stats").addEventListener("click", function(){ renderStats(); show("stats"); });
+  $("btn-to-settings").addEventListener("click", function(){ applySettings(); show("settings"); });
+  $("btn-info").addEventListener("click", function(){ show("info"); });
+  $("btn-dose").addEventListener("click", function(){ show("dose"); resetDose(); });
+  var backs = document.querySelectorAll("[data-back]");
+  for(var i=0;i<backs.length;i++) backs[i].addEventListener("click", function(){ show("fork"); });
+
+  /* ---------- 設定 ---------- */
+  $("settings-save").addEventListener("click", function(){
+    settings.sns = $("set-sns").value;
+    settings.book = $("set-book").value;
+    settings.identity = $("set-identity").value;
+    settings.purpose = $("set-purpose").value;
+    settings.readMin = parseInt($("set-readmin").value, 10) || 5;
+    settings.dose = parseInt($("set-dose").value, 10) || 3;
+    saveSettings(settings);
+    var lg = loadLog(), hasSetup = false;
+    for(var i=0;i<lg.length;i++) if(lg[i].type === "setup") hasSetup = true;
+    if(!hasSetup) pushLog("setup");
+    applySettings(); updateStampUI(); show("fork");
+  });
+
+  /* ---------- 記録 ---------- */
+  var LABEL = { kindle:"Kindle側を選択", sns:"SNS側を選択", dose:"服用（タスク完了）", install:"アプリを入れた（前進1つ目）", setup:"設定した（前進2つ目）" };
+  function forwardTotal(){
+    var log = loadLog(), kindle = 0, hasInstall = false, hasSetup = false;
+    for(var i=0;i<log.length;i++){
+      if(log[i].type === "kindle") kindle++;
+      if(log[i].type === "install") hasInstall = true;
+      if(log[i].type === "setup") hasSetup = true;
+    }
+    var base = (hasInstall ? 1 : 0) + (hasSetup ? 1 : 0);
+    return { total: base + kindle, base: base, kindle: kindle, hasSetup: hasSetup };
+  }
+  var MILESTONES = [18, 66, 254];
+  function updateStampUI(){
+    var f = forwardTotal();
+    var hd = $("hd-count");
+    if(hd){
+      hd.textContent = f.total;
+      var base = 0, next = MILESTONES[MILESTONES.length - 1], i;
+      for(i = 0; i < MILESTONES.length; i++){
+        if(f.total < MILESTONES[i]){ next = MILESTONES[i]; base = i === 0 ? 0 : MILESTONES[i - 1]; break; }
+        if(i === MILESTONES.length - 1){ base = MILESTONES[i]; next = MILESTONES[i]; }
+      }
+      var pct = next === base ? 100 : Math.min(100, Math.round((f.total - base) / (next - base) * 100));
+      $("hd-gauge").style.width = pct + "%";
+    }
+  }
+  function renderStats(){
+    var log = loadLog(), c = { kindle:0, sns:0, dose:0 };
+    for(var i=0;i<log.length;i++){ if(c[log[i].type] !== undefined) c[log[i].type]++; }
+    var f = forwardTotal();
+    $("st-bright").textContent = f.total;
+    $("st-breakdown").textContent = "内訳：アプリを入れた +1 ／ " + (f.hasSetup ? "設定した +1" : "設定した +0（設定すると +1）") + " ／ いい方向に進めた +" + f.kindle;
+    $("st-total").textContent = c.kindle + c.sns;
+    $("st-kindle").textContent = c.kindle;
+    $("st-sns").textContent = c.sns;
+    $("st-dose").textContent = c.dose;
+    var ul = $("log-list"); ul.innerHTML = "";
+    var tail = log.slice(-10).reverse();
+    if(!tail.length){ ul.innerHTML = "<li>まだ記録がない</li>"; }
+    for(var j=0;j<tail.length;j++){
+      var li = document.createElement("li");
+      li.innerHTML = "<span></span>";
+      li.querySelector("span").textContent = fmtDate(tail[j].t);
+      li.appendChild(document.createTextNode(LABEL[tail[j].type] || tail[j].type));
+      ul.appendChild(li);
+    }
+  }
+  $("stats-reset").addEventListener("click", function(){
+    try{ localStorage.removeItem(LS_LOG); }catch(e){}
+    renderStats();
+  });
+
+  /* ---------- 服用モード：テトリス型タスク ---------- */
+  var COLS = 10, ROWS = 20, SZ = 18;
+  var ctx = $("board").getContext("2d");
+  var SHAPES = [
+    { m:[[1,1,1,1]], c:"#59b7c9" },
+    { m:[[1,1],[1,1]], c:"#e8c84a" },
+    { m:[[0,1,0],[1,1,1]], c:"#a06fc9" },
+    { m:[[0,1,1],[1,1,0]], c:"#5fae6e" },
+    { m:[[1,1,0],[0,1,1]], c:"#d95f4b" },
+    { m:[[1,0,0],[1,1,1]], c:"#5b84d6" },
+    { m:[[0,0,1],[1,1,1]], c:"#e8833a" }
+  ];
+  var grid, cur, dropTimer = null, countTimer = null, remainSec = 0, linesCleared = 0, running = false, elapsed = 0;
+
+  function newGrid(){ var g = []; for(var r=0;r<ROWS;r++){ var row=[]; for(var c=0;c<COLS;c++) row.push(null); g.push(row); } return g; }
+  function spawn(){
+    var s = SHAPES[Math.floor(Math.random()*SHAPES.length)];
+    cur = { m: s.m.map(function(r){ return r.slice(); }), c: s.c, x: Math.floor((COLS - s.m[0].length)/2), y: 0 };
+    if(collide(0,0,cur.m)){ stopDose(false); }
+  }
+  function collide(dx, dy, m){
+    for(var r=0;r<m.length;r++) for(var c=0;c<m[r].length;c++){
+      if(!m[r][c]) continue;
+      var nx = cur.x + c + dx, ny = cur.y + r + dy;
+      if(nx < 0 || nx >= COLS || ny >= ROWS) return true;
+      if(ny >= 0 && grid[ny][nx]) return true;
+    }
+    return false;
+  }
+  function merge(){
+    for(var r=0;r<cur.m.length;r++) for(var c=0;c<cur.m[r].length;c++){
+      if(cur.m[r][c] && cur.y + r >= 0) grid[cur.y + r][cur.x + c] = cur.c;
+    }
+  }
+  function clearLines(){
+    var kept = grid.filter(function(row){ return row.some(function(cell){ return !cell; }); });
+    var cleared = ROWS - kept.length;
+    while(kept.length < ROWS){ var row=[]; for(var c=0;c<COLS;c++) row.push(null); kept.unshift(row); }
+    grid = kept; linesCleared += cleared;
+    $("dose-lines").textContent = linesCleared;
+  }
+  function draw(){
+    ctx.fillStyle = "#22201d"; ctx.fillRect(0,0,COLS*SZ,ROWS*SZ);
+    ctx.strokeStyle = "rgba(255,255,255,0.06)";
+    for(var x=0;x<=COLS;x++){ ctx.beginPath(); ctx.moveTo(x*SZ,0); ctx.lineTo(x*SZ,ROWS*SZ); ctx.stroke(); }
+    for(var y=0;y<=ROWS;y++){ ctx.beginPath(); ctx.moveTo(0,y*SZ); ctx.lineTo(COLS*SZ,y*SZ); ctx.stroke(); }
+    var r,c;
+    for(r=0;r<ROWS;r++) for(c=0;c<COLS;c++) if(grid[r][c]){ ctx.fillStyle = grid[r][c]; ctx.fillRect(c*SZ+1, r*SZ+1, SZ-2, SZ-2); }
+    if(cur){ ctx.fillStyle = cur.c; for(r=0;r<cur.m.length;r++) for(c=0;c<cur.m[r].length;c++) if(cur.m[r][c]) ctx.fillRect((cur.x+c)*SZ+1, (cur.y+r)*SZ+1, SZ-2, SZ-2); }
+  }
+  function step(){
+    if(!cur) return;
+    if(!collide(0,1,cur.m)){ cur.y++; }
+    else{ merge(); clearLines(); spawn(); }
+    draw();
+  }
+  function speed(){ return Math.max(260, 720 - Math.floor(elapsed/30)*110); }
+  function restartDrop(){ if(dropTimer) clearInterval(dropTimer); dropTimer = setInterval(step, speed()); }
+  function resetDose(){
+    grid = newGrid(); cur = null; linesCleared = 0; elapsed = 0; running = false;
+    remainSec = (settings.dose || 3) * 60;
+    $("dose-timer").textContent = fmtTime(remainSec);
+    $("dose-lines").textContent = "0";
+    $("dose-start").style.display = "block";
+    $("dose-pad").style.display = "none";
+    if(dropTimer) clearInterval(dropTimer);
+    if(countTimer) clearInterval(countTimer);
+    draw();
+  }
+  function startDose(){
+    if(running) return;
+    running = true; elapsed = 0;
+    remainSec = (settings.dose || 3) * 60;
+    grid = newGrid(); linesCleared = 0; $("dose-lines").textContent = "0";
+    spawn(); draw(); restartDrop();
+    $("dose-start").style.display = "none";
+    $("dose-pad").style.display = "grid";
+    countTimer = setInterval(function(){
+      remainSec--; elapsed++;
+      $("dose-timer").textContent = fmtTime(Math.max(0, remainSec));
+      if(elapsed % 30 === 0) restartDrop();
+      if(remainSec <= 0){ stopDose(true); }
+    }, 1000);
+  }
+  function stopDose(done){
+    running = false;
+    if(dropTimer) clearInterval(dropTimer);
+    if(countTimer) clearInterval(countTimer);
+    $("dose-pad").style.display = "none";
+    $("dose-start").style.display = "block";
+    $("dose-start").textContent = "もう一度服用する";
+    if(done){
+      pushLog("dose");
+      show("fork");
+      $("dose-done-msg").style.display = "block";
+    }
+  }
+  $("dose-start").addEventListener("click", startDose);
+  $("dose-quit").addEventListener("click", function(){ stopDose(false); show("fork"); });
+  function move(dx){ if(running && cur && !collide(dx,0,cur.m)){ cur.x += dx; draw(); } }
+  function rotate(){
+    if(!running || !cur) return;
+    var m = cur.m, rot = m[0].map(function(_, ci){ return m.map(function(row){ return row[ci]; }).reverse(); });
+    if(!collide(0,0,rot)){ cur.m = rot; draw(); }
+  }
+  $("pad-left").addEventListener("click", function(){ move(-1); });
+  $("pad-right").addEventListener("click", function(){ move(1); });
+  $("pad-rotate").addEventListener("click", rotate);
+  $("pad-down").addEventListener("click", function(){ if(running) step(); });
+  document.addEventListener("keydown", function(e){
+    if(!$("view-dose").classList.contains("active") || !running) return;
+    if(e.key === "ArrowLeft") move(-1);
+    else if(e.key === "ArrowRight") move(1);
+    else if(e.key === "ArrowDown") step();
+    else if(e.key === "ArrowUp") rotate();
+  });
+
+  /* ---------- シミュレーション ---------- */
+  var SIM_CAPS = {
+    "sim-store": "① ダウンロード。ストアで「入手」を押すところから。",
+    "sim-welcome": "② 初回起動。この時点で前進カウントは <b>1回</b>。ゼロからは始まらない。",
+    "sim-setup": "③ 初期設定。値は入れてあるので、確認して押すだけ（実際は自分で選ぶ／書く）。",
+    "sim-ready": "④ 設定完了で <b>2回</b>。一番摩擦の大きい所を越えた時点で、もう前進として数える。",
+    "sim-home": "⑤ 普段の場面。いつもの癖で、なんとなくXをタップしてみて。",
+    "sim-xflash": "⑥ Xは開く。ただし約1秒で割り込みが発火して、画面が切り替わる。",
+    "sim-fork": "⑦ 分岐画面。目的（狙い）はKindleカードの中に。カウントは2回の表示。「これまでの学び」をタップすると、貯まった学びが展開する（2回目以降の利用イメージ）。Kindle側／SNS側／服用のどれかを選んでみて。",
+    "sim-xfeed": "⑧ SNS側を選んだ場合。そのまま通る（罰なし）。ただしカウントは増えない。戻ってKindle側も試せる。",
+    "sim-dose": "⑨ 服用ルート。3分のタスクで衝動が落ちたら、分岐に戻って選び直す。",
+    "sim-kindle": "⑩ Kindleに着地。「何を得るために読むか（狙い）」も表示されるから、漠然と読まずに済む。「5分だけ読む」が今回の具体的な行動。",
+    "sim-learn": "⑪ 読んだら1行だけ残す。この蓄積が、次に開いたときの「前回の続き」になる。",
+    "sim-done": "⑫ 完了。1回の回避でカウントは <b>3回</b> に、学びも1件貯まった。短期の1回の積み重ねが、このアプリの全部。"
+  };
+  var simTimer = null;
+  function simGo(id){
+    if(simTimer){ clearTimeout(simTimer); simTimer = null; }
+    var stages = document.querySelectorAll(".sim-stage");
+    for(var i=0;i<stages.length;i++) stages[i].classList.remove("on");
+    var el = $(id); if(el) el.classList.add("on");
+    $("sim-cap").innerHTML = SIM_CAPS[id] || "";
+    if(id === "sim-xflash"){
+      simTimer = setTimeout(function(){ simGo("sim-fork"); }, 1100);
+    }
+  }
+  $("btn-to-sim").addEventListener("click", function(){
+    var g = $("sim-get"); g.textContent = "入手"; g.disabled = false;
+    show("sim"); simGo("sim-store");
+    window.scrollTo(0,0);
+  });
+  $("sim-get").addEventListener("click", function(){
+    var g = $("sim-get");
+    if(g.textContent === "開く"){ simGo("sim-welcome"); return; }
+    g.textContent = "…"; g.disabled = true;
+    setTimeout(function(){ g.textContent = "開く"; g.disabled = false; }, 700);
+  });
+  $("sim-welcome-next").addEventListener("click", function(){ simGo("sim-setup"); });
+  $("sim-setup-btn").addEventListener("click", function(){ simGo("sim-ready"); });
+  $("sim-ready-btn").addEventListener("click", function(){ simGo("sim-home"); });
+  $("sim-icon-x").addEventListener("click", function(){ simGo("sim-xflash"); });
+  $("sim-btn-kindle").addEventListener("click", function(){ simGo("sim-kindle"); });
+  $("sim-btn-sns").addEventListener("click", function(){ simGo("sim-xfeed"); });
+  $("sim-xfeed-back").addEventListener("click", function(){ simGo("sim-fork"); });
+  $("sim-btn-dose").addEventListener("click", function(){ simGo("sim-dose"); });
+  $("sim-dose-btn").addEventListener("click", function(){ simGo("sim-fork"); });
+  $("sim-learn-toggle").addEventListener("click", function(){
+    var box = $("sim-fork-learn");
+    box.style.display = box.style.display !== "none" ? "none" : "block";
+  });
+  $("sim-kindle-btn").addEventListener("click", function(){ simGo("sim-learn"); });
+  $("sim-learn-btn").addEventListener("click", function(){ simGo("sim-done"); });
+  $("sim-restart").addEventListener("click", function(){
+    var g = $("sim-get"); g.textContent = "入手"; g.disabled = false;
+    simGo("sim-store");
+  });
+  $("sim-exit").addEventListener("click", function(){ show("fork"); });
+
+  (function(){
+    var lg = loadLog(), hasInstall = false;
+    for(var i=0;i<lg.length;i++) if(lg[i].type === "install") hasInstall = true;
+    if(!hasInstall) pushLog("install");
+  })();
+  $("pass-open").addEventListener("click", function(){ window.location.href = SNS[settings.sns].app; });
+  $("pass-fork").addEventListener("click", function(){ show("fork"); });
+
+  applySettings();
+  updateStampUI();
+  resetDose();
+  if(/[?&]auto=1/.test(location.search) && passActive()){
+    show("pass");
+    setTimeout(function(){ window.location.href = SNS[settings.sns].app; }, 500);
+  }
+})();
+</script>
+</body>
+</html>
