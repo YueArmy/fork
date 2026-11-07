@@ -220,6 +220,7 @@
       <tr><td>Kindle側が選ばれた</td><td id="st-kindle">0</td></tr>
       <tr><td>SNS側が選ばれた</td><td id="st-sns">0</td></tr>
       <tr><td>服用した回数</td><td id="st-dose">0</td></tr>
+      <tr><td>パス状態（SNSを選んだ後の素通り）</td><td id="st-pass">なし</td></tr>
     </table>
     <h3 class="sec">最近の記録</h3>
     <ul class="log" id="log-list"></ul>
@@ -506,6 +507,7 @@
   var LS_PASS = "skf_pass_until";
   function passActive(){ try{ return Date.now() < (parseInt(localStorage.getItem(LS_PASS), 10) || 0); }catch(e){ return false; } }
   function setPass(){ try{ localStorage.setItem(LS_PASS, String(Date.now() + 30 * 60000)); }catch(e){} }
+  function passRemainingMin(){ try{ var u = parseInt(localStorage.getItem(LS_PASS), 10) || 0; return Math.max(0, Math.ceil((u - Date.now()) / 60000)); }catch(e){ return 0; } }
   function lastLearningText(){
     var a = loadLearnings();
     if(!a.length) return "前回の学びはまだない。今回が1件目になる。";
@@ -582,6 +584,7 @@
     pushLog(dest);
     updateStampUI();
     pendingDest = dest;
+    if(dest === "sns") setPass();
     var lb = $("result-learn-box");
     if(dest === "kindle"){
       lb.style.display = "block";
@@ -709,6 +712,7 @@
     $("st-kindle").textContent = c.kindle;
     $("st-sns").textContent = c.sns;
     $("st-dose").textContent = c.dose;
+    $("st-pass").textContent = passActive() ? "有効（あと約" + passRemainingMin() + "分）" : "なし";
     var ul = $("log-list"); ul.innerHTML = "";
     var tail = log.slice(-10).reverse();
     if(!tail.length){ ul.innerHTML = "<li>まだ記録がない</li>"; }
