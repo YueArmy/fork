@@ -264,6 +264,11 @@
     </select>
     <button class="primary" id="settings-save">保存する</button>
     <p class="note">本の表紙そのものは取得できないので、試作ではタイトル文字で代用してる。実際の素材の当て方は実機で試してから決める。読む時間をAIが推薦する形もあり得るが、試作では未実装（まず自分で決める形で確かめる）。</p>
+    <h3 class="sec">設定リンク（URLで設定する）</h3>
+    <p class="note" style="margin-top:0;">今の設定が全部入ったURL。ショートカットの「URLを開く」にはこのリンクを貼るのが確実（開くたびに設定が適用されるので、保存領域が分かれても平気）。設定を変えたら、リンクも貼り直す。</p>
+    <textarea id="share-link" readonly rows="4" style="width:100%; padding:11px 12px; border:1.5px solid var(--line); border-radius:10px; font-size:12.5px; font-family:inherit; background:#fdfcf9; word-break:break-all;"></textarea>
+    <button class="ghost" id="share-copy" style="width:100%; margin-top:8px;">リンクをコピー</button>
+    <p class="msg" id="share-copied" style="display:none;">コピーした。</p>
   </section>
 
   <!-- 情報（開発者向け・解説） -->
@@ -279,7 +284,7 @@
       <li>このページを Safari で開き、共有ボタンから「ホーム画面に追加」する。</li>
       <li>ショートカット App → オートメーション → ＋ → 「App」を選ぶ。</li>
       <li>対象のSNS（Xなど）を選び、「開かれている」をチェック、「すぐに実行」を選ぶ。</li>
-      <li>アクションに「URLを開く」を追加し、このページのURLの末尾に <b>?auto=1</b> を付けて指定する（パス状態の判定に使う）。</li>
+      <li>アクションに「URLを開く」を追加し、設定画面で作れる <b>設定リンク</b>（?auto=1 と今の設定が全部入ったURL）を貼る。開くたびに設定が適用されるので確実。設定を変えたらリンクも貼り直す。</li>
       <li>SNSを開くたびに分岐画面が先に出るようになる。効きすぎ／弱すぎを感じたら、設定で服用の長さを変える。</li>
     </ol>
     <p class="note">注意：オートメーションの挙動はiOSのバージョンで変わる。まず1つのアプリだけで試して、ループ（開く→分岐→開く…）にならないか確認すること。分岐でSNS側を選んだあとは、このページを経由せず直接開くのでループにはならない想定。</p>
@@ -465,6 +470,36 @@
   var settings = loadSettings();
   var pendingDest = null;
 
+  function applyUrlParams(){
+    if(!location.search) return;
+    var p;
+    try{ p = new URLSearchParams(location.search); }catch(e){ return; }
+    var changed = false;
+    var sns = p.get("sns");
+    if(sns && SNS[sns]){ settings.sns = sns; changed = true; }
+    if(p.get("book")){ settings.book = p.get("book"); changed = true; }
+    if(p.get("purpose")){ settings.purpose = p.get("purpose"); changed = true; }
+    if(p.get("ident")){ settings.identity = p.get("ident"); changed = true; }
+    var r = parseInt(p.get("read"), 10);
+    if([1,5,10].indexOf(r) >= 0){ settings.readMin = r; changed = true; }
+    var d = parseInt(p.get("dose"), 10);
+    if([3,5].indexOf(d) >= 0){ settings.dose = d; changed = true; }
+    if(changed) saveSettings(settings);
+  }
+  function settingsLink(){
+    var base = location.href.indexOf("http") === 0 ? location.origin + location.pathname : "https://yuearmy.github.io/fork/";
+    var p = new URLSearchParams();
+    p.set("auto", "1");
+    p.set("sns", settings.sns);
+    if(settings.book) p.set("book", settings.book);
+    if(settings.purpose) p.set("purpose", settings.purpose);
+    if(settings.identity) p.set("ident", settings.identity);
+    p.set("read", String(settings.readMin || 5));
+    p.set("dose", String(settings.dose || 3));
+    return base + "?" + p.toString();
+  }
+  function refreshShareLink(){ var t = $("share-link"); if(t) t.value = settingsLink(); }
+
   var LS_LEARN = "skf_learnings";
   function loadLearnings(){ try{ return JSON.parse(localStorage.getItem(LS_LEARN)) || []; }catch(e){ return []; } }
   function saveLearnings(a){ try{ localStorage.setItem(LS_LEARN, JSON.stringify(a)); }catch(e){} }
@@ -622,7 +657,19 @@
     var lg = loadLog(), hasSetup = false;
     for(var i=0;i<lg.length;i++) if(lg[i].type === "setup") hasSetup = true;
     if(!hasSetup) pushLog("setup");
-    applySettings(); updateStampUI(); show("fork");
+    applySettings(); updateStampUI(); refreshShareLink(); show("fork");
+  });
+  $("share-copy").addEventListener("click", function(){
+    var t = $("share-link");
+    refreshShareLink();
+    t.select();
+    function done(){ $("share-copied").style.display = "block"; }
+    if(navigator.clipboard && navigator.clipboard.writeText){
+      navigator.clipboard.writeText(t.value).then(done, function(){ try{ document.execCommand("copy"); }catch(e){} done(); });
+    }else{
+      try{ document.execCommand("copy"); }catch(e){}
+      done();
+    }
   });
 
   /* ---------- 記録 ---------- */
@@ -861,9 +908,11 @@
   $("pass-open").addEventListener("click", function(){ window.location.href = SNS[settings.sns].app; });
   $("pass-fork").addEventListener("click", function(){ show("fork"); });
 
+  applyUrlParams();
   applySettings();
   updateStampUI();
   resetDose();
+  refreshShareLink();
   if(/[?&]auto=1/.test(location.search) && passActive()){
     show("pass");
     setTimeout(function(){ window.location.href = SNS[settings.sns].app; }, 500);
