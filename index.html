@@ -26,6 +26,8 @@
   .fork-card.sns{border-color:#cfd8e2; background:var(--sns-bg);}
   .fork-card.kindle{border-color:#f3cf9f; background:var(--kindle-bg);}
   .fork-card .art{display:flex; justify-content:center; padding:4px 0 8px;}
+  .fork-card .artimg{padding:0 0 10px;}
+  .fork-card .artimg img{width:100%; height:170px; object-fit:cover; display:block; border-radius:12px;}
   .fork-card h2{font-size:19px; margin:4px 0 2px;}
   .fork-card p{font-size:13.5px; color:var(--sub); margin:0; line-height:1.6;}
   .fork-card .ident{display:inline-block; font-size:12.5px; font-weight:700; padding:3px 10px; border-radius:999px; margin:2px 0 6px;}
@@ -114,19 +116,7 @@
     <div id="dose-done-msg" class="msg" style="display:none;">服用おわり。衝動の様子はどう？ もう一度、どっちに進むか選んでみて。</div>
     <div class="fork-cards">
       <button class="fork-card sns" id="btn-sns">
-        <div class="art">
-          <svg width="150" height="110" viewBox="0 0 150 110" aria-hidden="true">
-            <rect x="52" y="6" width="46" height="86" rx="9" fill="#fff" stroke="#8b98a8" stroke-width="2.5"/>
-            <rect x="60" y="18" width="30" height="7" rx="3.5" fill="#ccd6e0"/>
-            <rect x="60" y="31" width="30" height="7" rx="3.5" fill="#dde4ec"/>
-            <rect x="60" y="44" width="30" height="7" rx="3.5" fill="#ccd6e0"/>
-            <rect x="60" y="57" width="22" height="7" rx="3.5" fill="#dde4ec"/>
-            <path d="M112 26 v34 M106 52 l6 9 6-9" fill="none" stroke="#8b98a8" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>
-            <path d="M38 84 V50 M32 58 l6-9 6 9" fill="none" stroke="#b3bfcc" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>
-            <circle cx="120" cy="88" r="13" fill="#fff" stroke="#8b98a8" stroke-width="2.5"/>
-            <path d="M120 80 v8 l6 4" fill="none" stroke="#8b98a8" stroke-width="2.5" stroke-linecap="round"/>
-          </svg>
-        </div>
+        <div class="art artimg"><img src="sns.jpg" alt="深夜、ソファでスマホを見続けて消耗している人"></div>
         <h2>いつものスクロール</h2>
         <div class="ident">気づいたら時間が過ぎている人</div>
         <p>30分溶けて、目が疲れて、やるはずだったことが残ってる自分。</p>
