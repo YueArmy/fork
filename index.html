@@ -263,6 +263,11 @@
       <option value="3">3分（標準）</option>
       <option value="5">5分（強め）</option>
     </select>
+    <label class="f">SNS側を選んだときの開き方</label>
+    <select id="set-snsopen">
+      <option value="shortcut">ショートカット「ブンキ・パス」経由（ループ回避・推奨）</option>
+      <option value="direct">アプリを直接開く（オートメーションが再発火してループしやすい）</option>
+    </select>
     <button class="primary" id="settings-save">保存する</button>
     <p class="note">本の表紙そのものは取得できないので、試作ではタイトル文字で代用してる。実際の素材の当て方は実機で試してから決める。読む時間をAIが推薦する形もあり得るが、試作では未実装（まず自分で決める形で確かめる）。</p>
     <h3 class="sec">設定リンク（URLで設定する）</h3>
@@ -282,11 +287,13 @@
     <p class="note">カウントは0から始まらない。アプリを入れた時点で+1、設定を完了した時点で+1（合計2）。これはスタンプカードの研究（最初から2つ押してあるカードは完遂率が高い＝授与進捗効果）に基づく。ゲージの目安（18回・66回・254回）は、習慣が自動化するまでの期間を測った研究（Lally ら, 2010：中央値66日、幅18〜254日）の数字を回数に読み替えたもので、卒業ラインではない。表示は「残り」ではなく「溜まった分」を見る形にしてある。</p>
     <h3 class="sec">実機への置き方（iPhone / ショートカット）</h3>
     <ol class="guide">
-      <li>このページを Safari で開き、共有ボタンから「ホーム画面に追加」する。</li>
-      <li>ショートカット App → オートメーション → ＋ → 「App」を選ぶ。</li>
-      <li>対象のSNS（Xなど）を選び、「開かれている」をチェック、「すぐに実行」を選ぶ。</li>
-      <li>アクションに「URLを開く」を追加し、設定画面で作れる <b>設定リンク</b>（?auto=1 と今の設定が全部入ったURL）を貼る。開くたびに設定が適用されるので確実。設定を変えたらリンクも貼り直す。</li>
-      <li>SNSを開くたびに分岐画面が先に出るようになる。効きすぎ／弱すぎを感じたら、設定で服用の長さを変える。</li>
+      <li>まずショートカットを2つ作る（名前はこの通りで）。<br>
+      <b>「ブンキ・パス」</b>：アクション順に [現在の日付を取得] → [日付を調整：30分を加える] → [日付の書式設定：ISO 8601] → [ファイルを保存：iCloud Drive の Shortcuts フォルダに「bunki-pass.txt」として上書き] → [Appを開く：X]。<br>
+      <b>「ブンキ判定」</b>：[ファイルを取得：Shortcuts/bunki-pass.txt] → [入力から日付を取得] → [If：日付が「現在の日付」より後の場合 → 何もしない（そのまま終了）／それ以外の場合 → URLを開く：設定リンク]。</li>
+      <li>最初に一度だけ「ブンキ・パス」を手動で実行しておく（パス用ファイルを作るため。Xが開くけど正常）。</li>
+      <li>オートメーションを作る：ショートカット App → オートメーション → ＋ → 「App」→ X を選び、「開かれている」をチェック、「すぐに実行」。アクションは [ショートカットを実行：ブンキ判定] だけ。</li>
+      <li>ページの設定で自分の本・目的を入れ、「設定リンク」をコピーして、「ブンキ判定」の「URLを開く」に貼る。設定を変えたら貼り直す。</li>
+      <li>動き：Xを開く → 判定が走り、パスが残っていれば何も起きずXのまま。パスがなければ分岐ページが開く。分岐でSNS側を選ぶと「ブンキ・パス」が実行され、30分のパスを記録してからXを開く（ショートカット経由の起動はオートメーションを再発火させない想定。ここは実機で要確認）。</li>
     </ol>
     <p class="note">注意：オートメーションの挙動はiOSのバージョンで変わる。まず1つのアプリだけで試して、ループ（開く→分岐→開く…）にならないか確認すること。分岐でSNS側を選んだあとは、このページを経由せず直接開くのでループにはならない想定。</p>
     <p class="note">分岐の言葉の作り方：目標は「新しい習慣を身につける」じゃなく、「どんな人でいるか」で書く（設定で変更できる）。1回の選択は小さくても、いい方向に進めた回数はブライトスポットとして貯まっていく、という考え方（『スイッチ！』）。</p>
@@ -456,7 +463,7 @@
   };
 
   function loadSettings(){
-    var d = { sns:"x", book:"", dose:3, identity:"", readMin:5, purpose:"" };
+    var d = { sns:"x", book:"", dose:3, identity:"", readMin:5, purpose:"", snsOpen:"shortcut" };
     try{ var s = JSON.parse(localStorage.getItem(LS_SET)); if(s){ for(var k in d){ if(s[k]!==undefined) d[k]=s[k]; } } }catch(e){}
     return d;
   }
@@ -485,6 +492,8 @@
     if([1,5,10].indexOf(r) >= 0){ settings.readMin = r; changed = true; }
     var d = parseInt(p.get("dose"), 10);
     if([3,5].indexOf(d) >= 0){ settings.dose = d; changed = true; }
+    var so = p.get("so");
+    if(so === "shortcut" || so === "direct"){ settings.snsOpen = so; changed = true; }
     if(changed) saveSettings(settings);
   }
   function settingsLink(){
@@ -497,6 +506,7 @@
     if(settings.identity) p.set("ident", settings.identity);
     p.set("read", String(settings.readMin || 5));
     p.set("dose", String(settings.dose || 3));
+    p.set("so", settings.snsOpen || "shortcut");
     return base + "?" + p.toString();
   }
   function refreshShareLink(){ var t = $("share-link"); if(t) t.value = settingsLink(); }
@@ -574,6 +584,7 @@
     }else{ kp.style.display = "none"; }
     $("set-readmin").value = String(settings.readMin || 5);
     $("set-dose").value = String(settings.dose);
+    $("set-snsopen").value = settings.snsOpen || "shortcut";
   }
 
   function fmtTime(sec){ var m = Math.floor(sec/60), s = sec%60; return m + ":" + (s<10?"0":"") + s; }
@@ -601,8 +612,10 @@
       var w = $("result-web"); w.textContent = "Kindle（Web版・クラウドリーダー）を開く"; w.style.display = "block";
     }else{
       $("result-title").textContent = sns.name + "へ進む";
-      $("result-note").textContent = "そのまま通す。罰なし。選んだ事実だけ記録した。これから30分は分岐を出さず素通りする（ループ防止のパス状態）。";
-      var b2 = $("result-open"); b2.textContent = sns.name + "アプリを開く"; b2.className = "primary sns";
+      $("result-note").textContent = settings.snsOpen === "direct"
+        ? "そのまま通す。罰なし。選んだ事実だけ記録した。"
+        : "そのまま通す。罰なし。ボタンでショートカット「ブンキ・パス」が30分のパスを記録してからXを開く（未作成だとエラーになる。作り方はⓘの手順）。";
+      var b2 = $("result-open"); b2.textContent = settings.snsOpen === "direct" ? sns.name + "アプリを開く" : sns.name + "へ進む（ブンキ・パス経由）"; b2.className = "primary sns";
       var w2 = $("result-web"); w2.textContent = sns.name + "（Web）を開く"; w2.style.display = "block";
     }
     show("result");
@@ -615,7 +628,8 @@
 
   $("result-open").addEventListener("click", function(){
     if(pendingDest === "kindle"){ window.location.href = "kindle://"; }
-    else{ setPass(); window.location.href = SNS[settings.sns].app; }
+    else if(settings.snsOpen === "direct"){ setPass(); window.location.href = SNS[settings.sns].app; }
+    else{ setPass(); window.location.href = "shortcuts://run-shortcut?name=" + encodeURIComponent("ブンキ・パス"); }
   });
   $("result-web").addEventListener("click", function(){
     if(pendingDest === "kindle"){ window.open("https://read.amazon.co.jp/", "_blank"); }
@@ -656,6 +670,7 @@
     settings.purpose = $("set-purpose").value;
     settings.readMin = parseInt($("set-readmin").value, 10) || 5;
     settings.dose = parseInt($("set-dose").value, 10) || 3;
+    settings.snsOpen = $("set-snsopen").value;
     saveSettings(settings);
     var lg = loadLog(), hasSetup = false;
     for(var i=0;i<lg.length;i++) if(lg[i].type === "setup") hasSetup = true;
